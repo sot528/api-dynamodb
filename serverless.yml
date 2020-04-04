@@ -1,0 +1,67 @@
+service: api-dynamodb-test
+
+frameworkVersion: ">=1.47.0 <2.0.0"
+
+plugins:
+  - serverless-apigateway-service-proxy
+
+custom:
+  bucket: alis-api-dynamodb-${opt:stage, 'dev'}
+  apiGatewayServiceProxies:
+    - dynamodb:
+        path: /dynamodb/{id}/{sort}
+        method: put
+        tableName: { Ref: 'YourTable' }
+        hashKey: # set pathParam or queryStringParam as a partitionkey.
+          pathParam: id
+          attributeType: S
+        rangeKey: # required if also using sort key. set pathParam or queryStringParam.
+          pathParam: sort
+          attributeType: S
+        action: PutItem # specify action to the table what you want
+        condition: attribute_not_exists(Id) # optional Condition Expressions parameter for the table
+        cors: true
+    - dynamodb:
+        path: /dynamodb
+        method: get
+        tableName: { Ref: 'YourTable' }
+        hashKey:
+          queryStringParam: id # use query string parameter
+          attributeType: S
+        rangeKey:
+          queryStringParam: sort
+          attributeType: S
+        action: GetItem
+        cors: true
+    - dynamodb:
+        path: /dynamodb/{id}
+        method: delete
+        tableName: { Ref: 'YourTable' }
+        hashKey:
+          pathParam: id
+          attributeType: S
+        action: DeleteItem
+        cors: true
+
+provider:
+  name: aws
+  stage: ${opt:stage, 'dev'}
+  region: ap-northeast-1
+
+resources:
+  Resources:
+    YourTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: YourTable
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: sort
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+          - AttributeName: sort
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
